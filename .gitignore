@@ -21,9 +21,13 @@ deepseekapi.txt
 node_modules/
 frontend/node_modules/
 
-*.db
-*.sqlite3
-backend/data/
+backend/data/*.db
+backend/data/*.sqlite3
+backend/data/outputs/*
+!backend/data/outputs/.gitkeep
+backend/data/local_inputs/*
+!backend/data/local_inputs/.gitkeep
+backend/data/xhs_cookie.txt
 
 .idea/
 .vscode/
