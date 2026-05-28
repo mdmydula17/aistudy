@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Dict, Optional
 from datetime import datetime
 
@@ -16,12 +16,20 @@ class ExtractedAssetData(BaseModel):
 
 
 class TaskCreateDTO(BaseModel):
-    url: str = Field(..., description="小红书笔记 URL")
+    keyword: Optional[str] = Field(None, description="搜索关键词，如 '小红书无货源玩法'")
+    urls: Optional[List[str]] = Field(None, description="手动指定的小红书笔记 URL 列表")
+    contents: Optional[List[str]] = Field(None, description="手动粘贴的笔记文本内容列表，与 urls 一一对应或独立提供")
+
+    @model_validator(mode="after")
+    def check_keyword_or_urls(self):
+        if not self.keyword and not self.urls and not self.contents:
+            raise ValueError("keyword、urls、contents 至少需要提供一个")
+        return self
 
 
 class TaskDTO(BaseModel):
     id: str
-    url: str
+    keyword: Optional[str] = None
     status: str
     needs_human_review: bool
     error: Optional[str] = None
@@ -40,6 +48,17 @@ class AssetDTO(BaseModel):
     confidence_score: float
     raw_text: Optional[str] = None
     ocr_text: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReportDTO(BaseModel):
+    id: str
+    task_id: str
+    title: str
+    markdown_content: str
+    pdf_path: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

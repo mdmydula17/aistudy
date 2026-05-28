@@ -1,26 +1,25 @@
 from langchain_openai import ChatOpenAI
 
 from app.core.config import (
-    DEEPSEEK_API_KEY,
-    DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL,
-    DEEPSEEK_VISION_MODEL,
+    get_deepseek_api_key,
+    get_deepseek_base_url,
+    get_deepseek_model,
 )
 
 
 def get_chat_llm(temperature: float = 0.1) -> ChatOpenAI:
     return ChatOpenAI(
-        api_key=DEEPSEEK_API_KEY,
-        base_url=f"{DEEPSEEK_BASE_URL}/v1",
-        model=DEEPSEEK_MODEL,
+        api_key=get_deepseek_api_key(),
+        base_url=f"{get_deepseek_base_url()}/v1",
+        model=get_deepseek_model(),
         temperature=temperature,
     )
 
 
 def get_vision_llm(temperature: float = 0.0) -> ChatOpenAI:
     return ChatOpenAI(
-        api_key=DEEPSEEK_API_KEY,
-        base_url=f"{DEEPSEEK_BASE_URL}/v1",
-        model=DEEPSEEK_VISION_MODEL,
+        api_key=get_deepseek_api_key(),
+        base_url=f"{get_deepseek_base_url()}/v1",
+        model=get_deepseek_model(),
         temperature=temperature,
     )

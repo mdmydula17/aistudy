@@ -8,6 +8,8 @@ APP_ROOT = Path(__file__).resolve().parent.parent.parent / "app"
 FORBIDDEN_IMPORTS = {
     "app.api": {"app.crud", "app.models"},
     "app.graph": {"fastapi"},
+    "app.ingestion": {"app.crud", "app.models", "app.api", "fastapi"},
+    "app.exporter": {"app.crud", "app.models", "app.api", "fastapi"},
 }
 
 
@@ -111,4 +113,32 @@ class TestASTConstitution:
                     assert not imp.startswith(prefix), (
                         f"CONSTITUTION VIOLATION: {f.name} imports '{imp}' "
                         f"(crud must not depend on api/graph/crawler)"
+                    )
+
+    def test_ingestion_must_not_import_business_layers(self):
+        ingestion_dir = APP_ROOT / "ingestion"
+        if not ingestion_dir.exists():
+            return
+        forbidden = ("app.crud", "app.models", "app.api", "fastapi")
+        for f in _collect_python_files(ingestion_dir):
+            imports = _get_module_imports(f)
+            for imp in imports:
+                for prefix in forbidden:
+                    assert not imp.startswith(prefix), (
+                        f"CONSTITUTION VIOLATION: {f.name} imports '{imp}' "
+                        f"(ingestion must not depend on crud/models/api)"
+                    )
+
+    def test_exporter_must_not_import_business_layers(self):
+        exporter_dir = APP_ROOT / "exporter"
+        if not exporter_dir.exists():
+            return
+        forbidden = ("app.crud", "app.models", "app.api", "fastapi")
+        for f in _collect_python_files(exporter_dir):
+            imports = _get_module_imports(f)
+            for imp in imports:
+                for prefix in forbidden:
+                    assert not imp.startswith(prefix), (
+                        f"CONSTITUTION VIOLATION: {f.name} imports '{imp}' "
+                        f"(exporter must not depend on crud/models/api)"
                     )

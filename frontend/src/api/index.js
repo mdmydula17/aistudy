@@ -2,16 +2,36 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 30000,
+  timeout: 60000,
 })
 
-export async function createTask(url) {
-  const res = await api.post('/tasks/', { url })
+export async function listTasks(limit = 50, offset = 0) {
+  const res = await api.get('/tasks/', { params: { limit, offset } })
+  return res.data
+}
+
+export async function createTask(keyword, urls = null, contents = null) {
+  const payload = {}
+  if (keyword) {
+    payload.keyword = keyword
+  }
+  if (urls && urls.length > 0) {
+    payload.urls = urls
+  }
+  if (contents && contents.length > 0) {
+    payload.contents = contents
+  }
+  const res = await api.post('/tasks/', payload)
   return res.data
 }
 
 export async function getTask(taskId) {
   const res = await api.get(`/tasks/${taskId}`)
+  return res.data
+}
+
+export async function getReport(taskId) {
+  const res = await api.get(`/tasks/${taskId}/report`)
   return res.data
 }
 

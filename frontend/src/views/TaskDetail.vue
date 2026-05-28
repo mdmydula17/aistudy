@@ -21,8 +21,8 @@
 
     <div class="detail-card">
       <div class="detail-row">
-        <label>URL</label>
-        <a :href="task.url" target="_blank" class="url-link">{{ task.url }}</a>
+        <label>关键词</label>
+        <span class="keyword-text">🔍 {{ task.keyword }}</span>
       </div>
       <div class="detail-row">
         <label>状态</label>
@@ -40,6 +40,26 @@
         <label>创建时间</label>
         <span>{{ formatTime(task.created_at) }}</span>
       </div>
+    </div>
+
+    <div class="report-section" v-if="task.status === 'completed'">
+      <div class="section-header">
+        <h3>📄 研报</h3>
+        <div class="report-actions">
+          <button @click="$router.push(`/tasks/${task.id}/report`)" class="btn btn-primary">
+            查看完整研报
+          </button>
+          <button v-if="report && report.pdf_path" @click="downloadPdf" class="btn btn-outline">
+            下载 PDF
+          </button>
+        </div>
+      </div>
+      <div v-if="reportLoading" class="loading-hint">加载研报中...</div>
+      <div v-else-if="report" class="report-preview">
+        <h4 class="report-title">{{ report.title }}</h4>
+        <div class="report-excerpt">{{ excerpt }}</div>
+      </div>
+      <div v-else class="empty-hint">研报生成中，请稍后刷新...</div>
     </div>
 
     <div class="assets-section">
@@ -69,13 +89,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTask, getAssetsByTask, approveTask, rejectTask } from '../api'
+import { getTask, getReport, getAssetsByTask, approveTask, rejectTask } from '../api'
 
 const route = useRoute()
 const task = ref(null)
 const assets = ref([])
+const report = ref(null)
+const reportLoading = ref(false)
 
 const statusLabel = (status) => {
   const map = {
@@ -96,6 +118,12 @@ const scoreClass = (score) => {
   return 'score-low'
 }
 
+const excerpt = computed(() => {
+  if (!report.value?.markdown_content) return ''
+  const text = report.value.markdown_content.replace(/[#*\-]/g, '').trim()
+  return text.length > 200 ? text.slice(0, 200) + '...' : text
+})
+
 const handleApprove = async () => {
   try {
     task.value = await approveTask(task.value.id)
@@ -112,11 +140,31 @@ const handleReject = async () => {
   }
 }
 
+const downloadPdf = () => {
+  if (report.value?.pdf_path) {
+    window.open(`/api/v1/files/${report.value.pdf_path}`, '_blank')
+  }
+}
+
+const fetchReport = async (taskId) => {
+  reportLoading.value = true
+  try {
+    report.value = await getReport(taskId)
+  } catch {
+    report.value = null
+  } finally {
+    reportLoading.value = false
+  }
+}
+
 onMounted(async () => {
   const id = route.params.id
   try {
     task.value = await getTask(id)
     assets.value = await getAssetsByTask(id)
+    if (task.value.status === 'completed') {
+      fetchReport(id)
+    }
   } catch (e) {
     alert('加载失败')
   }
@@ -193,6 +241,21 @@ onMounted(async () => {
 
 .btn-danger:hover { background: #ff7875; }
 
+.btn-primary {
+  background: #1677ff;
+  color: white;
+}
+
+.btn-primary:hover { background: #4096ff; }
+
+.btn-outline {
+  background: white;
+  color: #1677ff;
+  border: 1px solid #1677ff;
+}
+
+.btn-outline:hover { background: #f0f5ff; }
+
 .detail-card {
   background: white;
   border-radius: 12px;
@@ -216,24 +279,66 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.url-link {
-  color: #1677ff;
-  word-break: break-all;
+.keyword-text {
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .error-text {
   color: #ff4d4f;
 }
 
-.assets-section h3 {
-  font-size: 18px;
+.report-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 16px;
 }
 
-.empty-hint {
+.section-header h3 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.report-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.report-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #1677ff;
+}
+
+.report-excerpt {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.8;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border-left: 4px solid #1677ff;
+}
+
+.loading-hint, .empty-hint {
   color: #999;
   text-align: center;
-  padding: 32px 0;
+  padding: 24px 0;
+}
+
+.assets-section h3 {
+  font-size: 18px;
+  margin-bottom: 16px;
 }
 
 .asset-cards {

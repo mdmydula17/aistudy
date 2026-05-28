@@ -36,3 +36,12 @@ Thumbs.db
 
 venv/
 .venv/
+
+debug*.log
+debug*.txt
+test_*.txt
+playwright_result*.txt
+backend/debug_result.txt
+backend/playwright_result*.txt
+backend/task_result.txt
+backend/.browsers/

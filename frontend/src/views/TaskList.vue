@@ -2,21 +2,53 @@
   <div class="task-list">
     <div class="page-header">
       <h2>任务列表</h2>
-      <div class="create-form">
+    </div>
+
+    <div class="create-panel">
+      <div class="form-row">
         <input
-          v-model="newUrl"
-          placeholder="输入小红书笔记 URL"
-          class="url-input"
+          v-model="newKeyword"
+          placeholder="输入搜索关键词，如：小红书无货源玩法"
+          class="keyword-input"
           @keyup.enter="handleCreate"
         />
-        <button @click="handleCreate" :disabled="!newUrl || creating" class="btn btn-primary">
+        <button @click="handleCreate" :disabled="(!newKeyword && !manualUrls.trim() && !manualContents.trim()) || creating" class="btn btn-primary">
           {{ creating ? '创建中...' : '创建任务' }}
         </button>
       </div>
+      <div class="form-row">
+        <textarea
+          v-model="manualUrls"
+          placeholder="手动输入小红书笔记 URL（可选，每行一个）"
+          class="urls-input"
+          rows="2"
+        ></textarea>
+      </div>
+      <div class="form-row">
+        <textarea
+          v-model="manualContents"
+          placeholder="直接粘贴笔记文本内容（可选，每段用空行分隔，将自动拆分为多条）— 最可靠的方式"
+          class="contents-input"
+          rows="4"
+        ></textarea>
+      </div>
+      <div class="form-row cookie-row">
+        <input
+          v-model="xhsCookie"
+          placeholder="小红书 Cookie（可选，登录后搜索更精准）— 在浏览器登录小红书 → F12 → Network → 任意请求 → 复制 Cookie 值"
+          class="cookie-input"
+        />
+        <button @click="saveCookie" class="btn btn-outline" :disabled="!xhsCookie">
+          保存
+        </button>
+        <span v-if="cookieSaved" class="cookie-saved">✓ 已保存</span>
+      </div>
     </div>
 
-    <div v-if="tasks.length === 0" class="empty-state">
-      <p>暂无任务，请输入小红书 URL 创建新任务</p>
+    <div v-if="loading" class="loading-state">加载中...</div>
+
+    <div v-else-if="tasks.length === 0" class="empty-state">
+      <p>暂无任务，请输入关键词创建新任务</p>
     </div>
 
     <div v-else class="task-cards">
@@ -32,9 +64,13 @@
             {{ statusLabel(task.status) }}
           </span>
         </div>
-        <div class="task-url">{{ task.url }}</div>
+        <div class="task-keyword">
+          <span class="keyword-icon">🔍</span>
+          {{ task.keyword || '(手动URL任务)' }}
+        </div>
         <div class="task-meta">
           <span v-if="task.needs_human_review" class="review-flag">需人工审核</span>
+          <span v-if="task.error" class="error-flag">有错误</span>
           <span class="task-time">{{ formatTime(task.created_at) }}</span>
         </div>
       </div>
@@ -44,10 +80,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { createTask, getTask } from '../api'
+import { listTasks, createTask } from '../api'
 
-const newUrl = ref('')
+const newKeyword = ref('')
+const manualUrls = ref('')
+const manualContents = ref('')
+const xhsCookie = ref('')
+const cookieSaved = ref(false)
 const creating = ref(false)
+const loading = ref(true)
 const tasks = ref([])
 
 const statusLabel = (status) => {
@@ -67,13 +108,37 @@ const formatTime = (iso) => {
   return new Date(iso).toLocaleString('zh-CN')
 }
 
+const saveCookie = async () => {
+  if (!xhsCookie.value) return
+  try {
+    await fetch('/api/v1/settings/cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie: xhsCookie.value }),
+    })
+    cookieSaved.value = true
+    setTimeout(() => { cookieSaved.value = false }, 3000)
+  } catch (e) {
+    alert('保存失败: ' + e.message)
+  }
+}
+
 const handleCreate = async () => {
-  if (!newUrl.value || creating.value) return
+  if ((!newKeyword.value && !manualUrls.value.trim() && !manualContents.value.trim()) || creating.value) return
   creating.value = true
   try {
-    const task = await createTask(newUrl.value)
+    const urls = manualUrls.value
+      ? manualUrls.value.split('\n').map(u => u.trim()).filter(u => u.length > 0)
+      : null
+    const contents = manualContents.value.trim()
+      ? manualContents.value.split(/\n\s*\n/).map(c => c.trim()).filter(c => c.length > 0)
+      : null
+    const keyword = newKeyword.value.trim() || null
+    const task = await createTask(keyword, urls, contents)
     tasks.value.unshift(task)
-    newUrl.value = ''
+    newKeyword.value = ''
+    manualUrls.value = ''
+    manualContents.value = ''
   } catch (e) {
     alert('创建失败: ' + (e.response?.data?.detail || e.message))
   } finally {
@@ -81,16 +146,23 @@ const handleCreate = async () => {
   }
 }
 
-onMounted(() => {
-})
+const fetchTasks = async () => {
+  loading.value = true
+  try {
+    tasks.value = await listTasks()
+  } catch (e) {
+    console.error('Failed to fetch tasks:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchTasks)
 </script>
 
 <style scoped>
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .page-header h2 {
@@ -98,13 +170,27 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.create-form {
-  display: flex;
-  gap: 12px;
+.create-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.url-input {
-  width: 360px;
+.form-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.keyword-input {
+  flex: 1;
   padding: 10px 16px;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
@@ -113,8 +199,68 @@ onMounted(() => {
   transition: border-color 0.2s;
 }
 
-.url-input:focus {
+.keyword-input:focus {
   border-color: #4096ff;
+}
+
+.urls-input {
+  flex: 1;
+  padding: 8px 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.urls-input:focus {
+  border-color: #4096ff;
+}
+
+.contents-input {
+  flex: 1;
+  padding: 8px 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: vertical;
+  font-family: inherit;
+  background: #fafafa;
+}
+
+.contents-input:focus {
+  border-color: #4096ff;
+  background: white;
+}
+
+.cookie-row {
+  padding-top: 8px;
+  border-top: 1px dashed #e8e8e8;
+}
+
+.cookie-input {
+  flex: 1;
+  padding: 8px 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.cookie-input:focus {
+  border-color: #4096ff;
+}
+
+.cookie-saved {
+  color: #52c41a;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .btn {
@@ -124,6 +270,7 @@ onMounted(() => {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -138,6 +285,30 @@ onMounted(() => {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-outline {
+  background: white;
+  color: #1677ff;
+  border: 1px solid #1677ff;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #f0f5ff;
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 64px 0;
+  color: #999;
+  font-size: 15px;
 }
 
 .empty-state {
@@ -194,12 +365,16 @@ onMounted(() => {
 .status-rejected { background: #f5f5f5; color: #999; }
 .status-failed { background: #fff1f0; color: #cf1322; }
 
-.task-url {
-  font-size: 13px;
-  color: #555;
-  word-break: break-all;
+.task-keyword {
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
   margin-bottom: 12px;
   line-height: 1.5;
+}
+
+.keyword-icon {
+  margin-right: 4px;
 }
 
 .task-meta {
@@ -212,6 +387,14 @@ onMounted(() => {
 
 .review-flag {
   background: #ff4d4f;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.error-flag {
+  background: #faad14;
   color: white;
   padding: 2px 8px;
   border-radius: 4px;

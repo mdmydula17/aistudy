@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass
 
 
@@ -14,3 +14,6 @@ class BaseCrawler(ABC):
     @abstractmethod
     def crawl(self, url: str) -> CrawlResult:
         ...
+
+    def search(self, keyword: str, limit: int = 10) -> List[str]:
+        return []
