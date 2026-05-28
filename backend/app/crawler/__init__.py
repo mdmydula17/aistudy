@@ -1,3 +1,3 @@
-from app.crawler.base import BaseCrawler, CrawlResult
+from app.crawler.xiaohongshu import XiaohongshuCrawler
 
-__all__ = ["BaseCrawler", "CrawlResult"]
+__all__ = ["XiaohongshuCrawler"]

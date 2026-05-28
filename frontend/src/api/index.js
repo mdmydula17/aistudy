@@ -54,3 +54,8 @@ export async function uploadFiles(taskId, files) {
   })
   return res.data
 }
+
+export async function runSynthTask(taskId) {
+  const res = await api.post(`/synth/${taskId}/run`)
+  return res.data
+}

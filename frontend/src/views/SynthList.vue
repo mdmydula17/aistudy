@@ -26,7 +26,7 @@
     </div>
 
     <div v-else class="task-cards">
-      <div v-for="task in tasks" :key="task.id" class="task-card">
+      <div v-for="task in tasks" :key="task.id" class="task-card" @click="$router.push(`/synth/${task.id}`)">
         <div class="task-card-header">
           <span class="task-id">{{ task.id.slice(0, 8) }}...</span>
           <span :class="['status-badge', `status-${task.status}`]">
@@ -35,24 +35,9 @@
         </div>
         <div class="task-keyword">🟣 {{ task.keyword }}</div>
         <div v-if="task.error" class="task-error">{{ task.error }}</div>
-
-        <div v-if="task.status === 'pending'" class="upload-section">
-          <label class="upload-label">
-            📎 上传资料 (TXT/PDF/DOCX)
-            <input type="file" multiple accept=".txt,.pdf,.docx" @change="(e) => handleUpload(task.id, e)" class="file-input" />
-          </label>
-          <span v-if="uploadStatus[task.id]" class="upload-status">{{ uploadStatus[task.id] }}</span>
-        </div>
-
         <div class="task-meta">
           <span class="task-time">{{ formatTime(task.created_at) }}</span>
-          <button
-            v-if="task.status === 'completed'"
-            @click="$router.push(`/synth/${task.id}/report`)"
-            class="btn btn-green btn-sm"
-          >
-            📄 查看研报
-          </button>
+          <span class="click-hint">点击查看详情 →</span>
         </div>
       </div>
     </div>
@@ -60,22 +45,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { listSynthTasks, createSynthTask, uploadFiles } from '../api'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { listSynthTasks, createSynthTask } from '../api'
 
 const newKeyword = ref('')
 const creating = ref(false)
 const loading = ref(true)
 const tasks = ref([])
-const uploadStatus = reactive({})
+let pollTimer = null
 
 const statusLabel = (status) => {
-  const map = {
-    pending: '等待上传',
-    processing: '炼丹中',
-    completed: '已完成',
-    failed: '失败',
-  }
+  const map = { pending: '等待上传', processing: '炼丹中', completed: '已完成', failed: '失败' }
   return map[status] || status
 }
 
@@ -98,21 +78,7 @@ const handleCreate = async () => {
   }
 }
 
-const handleUpload = async (taskId, event) => {
-  const files = event.target.files
-  if (!files || files.length === 0) return
-
-  uploadStatus[taskId] = '上传中...'
-  try {
-    const result = await uploadFiles(taskId, files)
-    uploadStatus[taskId] = `✓ 已上传 ${result.saved.length} 个文件`
-  } catch (e) {
-    uploadStatus[taskId] = '上传失败: ' + (e.response?.data?.detail || e.message)
-  }
-}
-
 const fetchTasks = async () => {
-  loading.value = true
   try {
     tasks.value = await listSynthTasks()
   } catch (e) {
@@ -122,7 +88,18 @@ const fetchTasks = async () => {
   }
 }
 
-onMounted(fetchTasks)
+const hasActive = () => tasks.value.some(t => t.status === 'pending' || t.status === 'processing')
+
+onMounted(() => {
+  fetchTasks()
+  pollTimer = setInterval(() => {
+    if (hasActive()) fetchTasks()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 </script>
 
 <style scoped>
@@ -131,118 +108,56 @@ onMounted(fetchTasks)
 .subtitle { color: #999; font-size: 14px; margin-top: 4px; }
 
 .create-panel {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  background: white; border-radius: 12px; padding: 24px;
+  margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
-
 .form-row { display: flex; gap: 12px; align-items: center; }
 
 .keyword-input {
-  flex: 1;
-  padding: 10px 16px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
+  flex: 1; padding: 10px 16px; border: 1px solid #d9d9d9; border-radius: 8px;
+  font-size: 14px; outline: none; transition: border-color 0.2s;
 }
 .keyword-input:focus { border-color: #722ed1; }
 
 .btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
 .btn-purple { background: #722ed1; color: white; }
 .btn-purple:hover:not(:disabled) { background: #9254de; }
 .btn-purple:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-green { background: #52c41a; color: white; }
-.btn-green:hover:not(:disabled) { background: #73d13d; }
-.btn-sm { padding: 6px 14px; font-size: 12px; }
 
 .loading-state, .empty-state {
-  text-align: center;
-  padding: 64px 0;
-  color: #999;
-  font-size: 15px;
+  text-align: center; padding: 64px 0; color: #999; font-size: 15px;
 }
 
 .task-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px;
 }
 
 .task-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  transition: all 0.2s;
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s; cursor: pointer;
 }
-.task-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.task-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
 
 .task-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
 }
 .task-id { font-family: monospace; font-size: 13px; color: #666; }
 
-.status-badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
+.status-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
 .status-pending { background: #f9f0ff; color: #722ed1; }
 .status-processing { background: #e6f7ff; color: #0958d9; }
 .status-completed { background: #f6ffed; color: #389e0d; }
 .status-failed { background: #fff1f0; color: #cf1322; }
 
-.task-keyword { font-size: 15px; font-weight: 500; margin-bottom: 12px; }
-.task-error { color: #cf1322; font-size: 13px; margin-bottom: 8px; }
-
-.upload-section {
-  padding: 12px 0;
-  border-top: 1px solid #f0f0f0;
-  margin-bottom: 8px;
-}
-
-.upload-label {
-  display: inline-block;
-  padding: 8px 16px;
-  background: #f9f0ff;
-  color: #722ed1;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-.upload-label:hover { background: #efdbff; }
-
-.file-input { display: none; }
-
-.upload-status {
-  font-size: 12px;
-  color: #52c41a;
-  margin-left: 8px;
-}
+.task-keyword { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+.task-error { color: #cf1322; font-size: 13px; margin-bottom: 8px; word-break: break-all; }
 
 .task-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #999;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f0f0f0;
 }
-.task-time { font-size: 12px; }
+.click-hint { color: #722ed1; font-size: 12px; }
 </style>

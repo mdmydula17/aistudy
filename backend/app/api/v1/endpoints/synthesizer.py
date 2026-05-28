@@ -46,11 +46,9 @@ def list_synth(
 @router.post("/", response_model=SynthTaskDTO, status_code=201)
 def create_synth(
     dto: SynthTaskCreateDTO,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     task = create_synth_task(db, keyword=dto.keyword, radar_task_id=dto.radar_task_id)
-    background_tasks.add_task(_run_synth_background, task.id, task.keyword)
     return task
 
 
@@ -94,3 +92,23 @@ async def upload_files(
         saved.append(f.filename)
 
     return {"saved": saved, "task_id": task_id}
+
+
+@router.post("/{task_id}/run", response_model=SynthTaskDTO)
+def run_synth(
+    task_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    task = get_synth_task(db, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Synth task not found")
+
+    if task.status not in ("pending",):
+        raise HTTPException(status_code=400, detail=f"Task status is '{task.status}', cannot run")
+
+    update_synth_task_status(db, task_id, status="processing")
+    task.status = "processing"
+
+    background_tasks.add_task(_run_synth_background, task_id, task.keyword)
+    return task
