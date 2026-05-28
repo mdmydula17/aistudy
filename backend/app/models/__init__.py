@@ -1,3 +1,3 @@
-from app.models.task import Task, Asset
+from app.models.task import RadarTask, RadarResult, SynthTask, Report
 
-__all__ = ["Task", "Asset"]
+__all__ = ["RadarTask", "RadarResult", "SynthTask", "Report"]

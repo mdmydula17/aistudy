@@ -1,9 +1,7 @@
 <template>
   <div class="report-view" v-if="report">
     <div class="breadcrumb">
-      <router-link to="/">任务列表</router-link>
-      <span>/</span>
-      <router-link :to="`/tasks/${taskId}`">任务详情</router-link>
+      <router-link to="/synth">🟣 炼丹炉</router-link>
       <span>/</span>
       <span>研报</span>
     </div>
@@ -29,7 +27,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getReport } from '../api'
+import { getSynthReport } from '../api'
 
 const route = useRoute()
 const taskId = route.params.id
@@ -73,7 +71,7 @@ const renderMarkdown = (text) => {
 
 onMounted(async () => {
   try {
-    report.value = await getReport(taskId)
+    report.value = await getSynthReport(taskId)
   } catch (e) {
     alert('研报加载失败: ' + (e.response?.data?.detail || e.message))
   }
@@ -81,61 +79,22 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.breadcrumb {
-  font-size: 14px;
-  color: #999;
-  margin-bottom: 20px;
-}
-
-.breadcrumb a {
-  color: #1677ff;
-  text-decoration: none;
-}
-
-.breadcrumb span {
-  margin: 0 8px;
-}
+.breadcrumb { font-size: 14px; color: #999; margin-bottom: 20px; }
+.breadcrumb a { color: #722ed1; text-decoration: none; }
+.breadcrumb span { margin: 0 8px; }
 
 .report-header {
   margin-bottom: 32px;
   padding-bottom: 24px;
   border-bottom: 2px solid #f0f0f0;
 }
+.report-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; color: #1a1a2e; }
+.report-meta { display: flex; align-items: center; gap: 16px; }
+.report-time { font-size: 14px; color: #999; }
 
-.report-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #1a1a2e;
-}
-
-.report-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.report-time {
-  font-size: 14px;
-  color: #999;
-}
-
-.btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-outline {
-  background: white;
-  color: #1677ff;
-  border: 1px solid #1677ff;
-}
-
-.btn-outline:hover { background: #f0f5ff; }
+.btn { padding: 8px 20px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+.btn-outline { background: white; color: #722ed1; border: 1px solid #722ed1; }
+.btn-outline:hover { background: #f9f0ff; }
 
 .report-body {
   background: white;
@@ -144,70 +103,15 @@ onMounted(async () => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   max-width: 900px;
 }
+.markdown-content { font-size: 16px; line-height: 1.9; color: #333; }
+.markdown-content :deep(h1) { font-size: 24px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 12px; border-bottom: 2px solid #e8e8e8; color: #1a1a2e; }
+.markdown-content :deep(h2) { font-size: 20px; font-weight: 600; margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; color: #16213e; }
+.markdown-content :deep(h3) { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: #333; }
+.markdown-content :deep(blockquote) { margin: 16px 0; padding: 12px 20px; border-left: 4px solid #722ed1; background: #f9f0ff; border-radius: 0 8px 8px 0; color: #555; }
+.markdown-content :deep(ul) { padding-left: 24px; margin: 12px 0; }
+.markdown-content :deep(li) { margin: 8px 0; line-height: 1.8; }
+.markdown-content :deep(strong) { font-weight: 600; color: #1a1a2e; }
+.markdown-content :deep(p) { margin: 12px 0; }
 
-.markdown-content {
-  font-size: 16px;
-  line-height: 1.9;
-  color: #333;
-}
-
-.markdown-content :deep(h1) {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 32px 0 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e8e8e8;
-  color: #1a1a2e;
-}
-
-.markdown-content :deep(h2) {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 28px 0 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #16213e;
-}
-
-.markdown-content :deep(h3) {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 24px 0 12px;
-  color: #333;
-}
-
-.markdown-content :deep(blockquote) {
-  margin: 16px 0;
-  padding: 12px 20px;
-  border-left: 4px solid #1677ff;
-  background: #f0f5ff;
-  border-radius: 0 8px 8px 0;
-  color: #555;
-}
-
-.markdown-content :deep(ul) {
-  padding-left: 24px;
-  margin: 12px 0;
-}
-
-.markdown-content :deep(li) {
-  margin: 8px 0;
-  line-height: 1.8;
-}
-
-.markdown-content :deep(strong) {
-  font-weight: 600;
-  color: #1a1a2e;
-}
-
-.markdown-content :deep(p) {
-  margin: 12px 0;
-}
-
-.loading {
-  text-align: center;
-  padding: 64px 0;
-  color: #999;
-  font-size: 16px;
-}
+.loading { text-align: center; padding: 64px 0; color: #999; font-size: 16px; }
 </style>

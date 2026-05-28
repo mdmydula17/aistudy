@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.database import engine, Base
 from app.core.config import OUTPUTS_DIR
-from app.models.task import Task, Asset, Report
+from app.models.task import RadarTask, RadarResult, SynthTask, Report
 from app.api.v1.router import api_router
 
 
@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Info-Arbitrage-Factory",
-    version="6.0.0",
+    version="7.0.0",
     lifespan=lifespan,
 )
 

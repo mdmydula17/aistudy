@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".docx"}
 
 
-class LocalIngestion:
+class LocalParser:
     def __init__(self, base_dir: Path):
         self._base_dir = base_dir
 

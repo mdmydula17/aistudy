@@ -1,9 +1,10 @@
 <template>
   <div id="app">
     <header class="app-header">
-      <h1 @click="$router.push('/')" class="logo">Info-Arbitrage Factory V6</h1>
+      <h1 @click="$router.push('/')" class="logo">Info-Arbitrage Factory V7</h1>
       <nav>
-        <router-link to="/">任务列表</router-link>
+        <router-link to="/">🟢 爆款雷达</router-link>
+        <router-link to="/synth">🟣 知识炼丹炉</router-link>
       </nav>
     </header>
     <main class="app-main">

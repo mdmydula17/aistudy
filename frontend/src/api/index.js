@@ -5,52 +5,52 @@ const api = axios.create({
   timeout: 60000,
 })
 
-export async function listTasks(limit = 50, offset = 0) {
-  const res = await api.get('/tasks/', { params: { limit, offset } })
+export async function listRadarTasks(limit = 50, offset = 0) {
+  const res = await api.get('/radar/', { params: { limit, offset } })
   return res.data
 }
 
-export async function createTask(keyword, urls = null, contents = null) {
-  const payload = {}
-  if (keyword) {
-    payload.keyword = keyword
+export async function createRadarTask(keyword) {
+  const res = await api.post('/radar/', { keyword })
+  return res.data
+}
+
+export async function getRadarTask(taskId) {
+  const res = await api.get(`/radar/${taskId}`)
+  return res.data
+}
+
+export async function listSynthTasks(limit = 50, offset = 0) {
+  const res = await api.get('/synth/', { params: { limit, offset } })
+  return res.data
+}
+
+export async function createSynthTask(keyword, radarTaskId = null) {
+  const payload = { keyword }
+  if (radarTaskId) {
+    payload.radar_task_id = radarTaskId
   }
-  if (urls && urls.length > 0) {
-    payload.urls = urls
+  const res = await api.post('/synth/', payload)
+  return res.data
+}
+
+export async function getSynthTask(taskId) {
+  const res = await api.get(`/synth/${taskId}`)
+  return res.data
+}
+
+export async function getSynthReport(taskId) {
+  const res = await api.get(`/synth/${taskId}/report`)
+  return res.data
+}
+
+export async function uploadFiles(taskId, files) {
+  const formData = new FormData()
+  for (const f of files) {
+    formData.append('files', f)
   }
-  if (contents && contents.length > 0) {
-    payload.contents = contents
-  }
-  const res = await api.post('/tasks/', payload)
-  return res.data
-}
-
-export async function getTask(taskId) {
-  const res = await api.get(`/tasks/${taskId}`)
-  return res.data
-}
-
-export async function getReport(taskId) {
-  const res = await api.get(`/tasks/${taskId}/report`)
-  return res.data
-}
-
-export async function approveTask(taskId) {
-  const res = await api.patch(`/tasks/${taskId}/approve`)
-  return res.data
-}
-
-export async function rejectTask(taskId) {
-  const res = await api.patch(`/tasks/${taskId}/reject`)
-  return res.data
-}
-
-export async function getAssetsByTask(taskId) {
-  const res = await api.get(`/assets/task/${taskId}`)
-  return res.data
-}
-
-export async function getAsset(assetId) {
-  const res = await api.get(`/assets/${assetId}`)
+  const res = await api.post(`/synth/${taskId}/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return res.data
 }
